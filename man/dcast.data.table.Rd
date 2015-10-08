@@ -13,7 +13,7 @@
 % \method{dcast}{data.table}
 \usage{
 \method{dcast}{data.table}(data, formula, fun.aggregate = NULL, sep = "_", 
-    ..., margins = NULL, subset = NULL, fill = NULL, 
+    prior.levels, ..., margins = NULL, subset = NULL, fill = NULL, 
     drop = TRUE, value.var = guess(data),
     verbose = getOption("datatable.verbose"))
 }
@@ -24,6 +24,7 @@
 
   \bold{NEW}: it is possible to provide a list of functions to \code{fun.aggregate} argument. See \code{examples}.}
   \item{sep}{Default is \code{_} for backwards compatibility. Character vector of length 1, indicating the separating character in variable names generated during casting.}
+  \item{prior.levels}{A list, seting prior levels of rhs to make sure the result will be complete}
   \item{...}{Any other arguments that maybe passed to the aggregating function.}
   \item{margins}{Not implemented yet. Should take variable names to compute margins on. A value of \code{TRUE} would compute all margins.}
   \item{subset}{Specified if casting should be done on subset of the data. Ex: subset = .(col1 <= 5) or subset = .(variable != "January").}
@@ -91,6 +92,11 @@ dcast(dt, x + y ~ z, fun=list(sum, mean), value.var="d1")
 dcast(dt, x + y ~ z, fun=list(sum, mean), value.var=c("d1", "d2"))
 # multiple fun.agg and value.var (one-to-one)
 dcast(dt, x + y ~ z, fun=list(sum, mean), value.var=list("d1", "d2"))
+
+#NEW FEATURE - prior.levels
+dt = data.table(week=sample(c('Sun', 'Mon', 'Tue', 'Wed'), 100, replace = T),
+                y = sample(letters[1:3], 100, replace = T), z = sample(1:10, 100, replace = T))
+dcast(dt, y ~ week, fun = sum, prior.levels = list(week = c('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')), value.var = 'z')
 }
 \seealso{
   \code{\link{melt.data.table}}, \code{\link{rowid}}, \url{http://cran.r-project.org/package=reshape}

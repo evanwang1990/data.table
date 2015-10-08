@@ -90,7 +90,45 @@ aggregate_funs <- function(funs, vals, sep="_", ...) {
     as.call(c(quote(list), unlist(ans)))
 }
 
-dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", levels, ..., margins = NULL, subset = NULL, fill = NULL, drop = TRUE, value.var = guess(data), verbose = getOption("datatable.verbose")) {
+check_levels <- function(rhsnames, rhs.levels, prior.levels)
+{
+  if (any(!names(prior.levels) %in% rhsnames))
+      stop("variables in levels list can not be found in data")
+  addlevels <- vector(mode = 'list', length = length(rhsnames))
+  setattr(addlevels, "names", rhsnames)
+  for (rhsname_ in rhsnames)
+  {
+    if (any(!rhs.levels[[rhsname_]] %in% prior.levels[[rhsname_]]))
+      stop("some elements of", rhsname_, "in data don't exist in levels")
+    addlevels[[rhsname_]] <- setdiff(unique(prior.levels[[rhsname_]]), rhs.levels[[rhsname_]])
+  }
+  addlevels
+}
+
+add_levels_to_dat <- function(dat, lhsnames, addlevels, valnames)
+{
+  dat_ <- vector("list", length = length(names(dat)))
+  setattr(dat_, "names", names(dat))
+  for(var_ in lhsnames)
+  {
+    dat_[[var_]] <- unique(dat[[var_]])
+  }
+  for(var_ in names(addlevels))
+  {
+    if (length(addlevels[[var_]]) == 0)
+        dat_[[var_]] <- unique(dat[[var_]])
+    else
+        dat_[[var_]] <- addlevels[[var_]]
+  }
+  for(var_ in valnames)
+  {
+    dat_[[var_]] <- NaN
+  }
+  dat_ <- expand.grid(dat_, KEEP.OUT.ATTRS = F, stringsAsFactors = F)
+  dat <- rbind(dat, dat_)
+}
+
+dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", prior.levels, ..., margins = NULL, subset = NULL, fill = NULL, drop = TRUE, value.var = guess(data), verbose = getOption("datatable.verbose")) {
     if (!is.data.table(data)) stop("'data' must be a data.table.")
     if (anyDuplicated(names(data))) stop('data.table to cast must have unique column names')
     drop = as.logical(drop[1])
@@ -106,8 +144,12 @@ dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", lev
         x = allcols[[i]]
         dat[[i]] = if (identical(x, quote(`.`))) rep(".", nrow(data)) 
                       else eval(x, data, parent.frame())
+        if (is.factor(dat[[i]]))
+            dat[[i]] <- as.character(dat[[i]])
         if (is.function(dat[[i]]))
             stop("Column [", deparse(x), "] not found or of unknown type.")
+        if (is.list(dat[[i]]))
+            stop("Columns specified in formula can not be of type list")
     }
     setattr(lvars, 'names', c("lhs", "rhs"))
     # Have to take care of duplicate names, and provide names for expression columns properly.
@@ -122,10 +164,11 @@ dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", lev
     rhsnames = tail(varnames, -length(lvars$lhs))
     setattr(dat, 'names', c(varnames, valnames))
     setDT(dat)
-    if (any(sapply(as.list(dat)[varnames], is.list))) {
-        stop("Columns specified in formula can not be of type list")
-    }
-    #add levels check,目前只针对两种情况，length(rhsnames) = 1 or length(rhsnames = 2)
+    #deal with levels
+    if (!is.list(prior.levels) || is.null(names(prior.levels)))
+        stop("prior.levels should be a list with names!")
+    addlevels <- check_levels(rhsnames, lapply(data[, rhsnames, with = F], function(var) unique(var)), prior.levels)
+    dat <- add_levels_to_dat(dat, lhsnames, addlevels, valnames)
     m <- as.list(match.call()[-1L])
     subset <- m[["subset"]][[2L]]
     if (!is.null(subset)) {
