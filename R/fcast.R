@@ -90,7 +90,7 @@ aggregate_funs <- function(funs, vals, sep="_", ...) {
     as.call(c(quote(list), unlist(ans)))
 }
 
-dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", ..., margins = NULL, subset = NULL, fill = NULL, drop = TRUE, value.var = guess(data), verbose = getOption("datatable.verbose")) {
+dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", levels, ..., margins = NULL, subset = NULL, fill = NULL, drop = TRUE, value.var = guess(data), verbose = getOption("datatable.verbose")) {
     if (!is.data.table(data)) stop("'data' must be a data.table.")
     if (anyDuplicated(names(data))) stop('data.table to cast must have unique column names')
     drop = as.logical(drop[1])
@@ -125,6 +125,7 @@ dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", ...
     if (any(sapply(as.list(dat)[varnames], is.list))) {
         stop("Columns specified in formula can not be of type list")
     }
+    #add levels check,目前只针对两种情况，length(rhsnames) = 1 or length(rhsnames = 2)
     m <- as.list(match.call()[-1L])
     subset <- m[["subset"]][[2L]]
     if (!is.null(subset)) {
