@@ -165,10 +165,13 @@ dcast.data.table <- function(data, formula, fun.aggregate = NULL, sep = "_", pri
     setattr(dat, 'names', c(varnames, valnames))
     setDT(dat)
     #deal with levels
-    if (!is.list(prior.levels) || is.null(names(prior.levels)))
+    if(!missing(prior.levels))
+    {
+      if (!is.list(prior.levels) || is.null(names(prior.levels)))
         stop("prior.levels should be a list with names!")
-    addlevels <- check_levels(rhsnames, lapply(data[, rhsnames, with = F], function(var) unique(var)), prior.levels)
-    dat <- add_levels_to_dat(dat, lhsnames, addlevels, valnames)
+      addlevels <- check_levels(rhsnames, lapply(data[, rhsnames, with = F], function(var) unique(var)), prior.levels)
+      dat <- add_levels_to_dat(dat, lhsnames, addlevels, valnames)
+    }
     m <- as.list(match.call()[-1L])
     subset <- m[["subset"]][[2L]]
     if (!is.null(subset)) {
